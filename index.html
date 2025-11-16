@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc; /* Slate 50 */
@@ -55,12 +56,18 @@
                         <option value="never">Never Smoker</option>
                         <option value="ex">Ex-Smoker</option>
                         <option value="current">Current Smoker</option>
+                        <option value="Never Smoker">Never Smoker</option>
+                        <option value="Ex-smoker">Ex-smoker</option>
+                        <option value="Current Smoker">Current Smoker</option>
                     </select>
                 </div>
                 <!-- Recorded FVC (Baseline) -->
                 <div>
                     <label for="FVC" class="block text-sm font-medium text-gray-700 mb-1">Recorded FVC (mL)</label>
                     <input type="number" id="FVC" name="FVC" required
+                    <label for="fvc" class="block text-sm font-medium text-gray-700 mb-1">Recorded FVC (Baseline, mL)</label>
+                    <!-- NOTE: Changed name from FVC to fvc for consistency with Python backend -->
+                    <input type="number" id="fvc" name="fvc" required
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
                 </div>
                 
@@ -91,6 +98,7 @@
 
             <!-- Message Box for Alerts (Replaces alert()) -->
             <div id="messageBox" class="hidden p-4 rounded-lg text-sm transition duration-300 ease-in-out" role="alert"></div>
+            <div id="messageBox" class="p-4 rounded-lg text-sm transition duration-300 ease-in-out hidden" role="alert"></div>
 
 
             <!-- Submission Button -->
@@ -135,6 +143,11 @@
         const resultTableBody = document.getElementById('resultTableBody');
         const messageBox = document.getElementById('messageBox');
 
+        
+        // ** LIVE API ENDPOINT **
+        // This links directly to your deployed FastAPI serverless function on Vercel.
+        const API_URL = "https://ipf-preditor-egl11gb9p-aaric-rodrigues-projects.vercel.app/predict"; 
+        
         // Utility function to show custom messages instead of alert()
         function showMessage(type, message) {
             messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
@@ -146,6 +159,7 @@
             }
             messageBox.innerHTML = message;
             // Auto-hide message after 5 seconds
+            
             setTimeout(() => {
                 messageBox.classList.add('hidden');
             }, 5000);
@@ -163,7 +177,9 @@
         // --- SIMULATED API CALL FUNCTION ---
         // *** IMPORTANT: REPLACE THIS FUNCTION WITH A REAL 'fetch' TO YOUR DEPLOYED MODEL API ***
         // The real API should expect the form data (including the CT file) and return the FVC and Confidence.
+        // --- ACTUAL API CALL FUNCTION ---
         async function predictFVC(formData) {
+<<<<<<< HEAD
             // Simulate network delay for the API call
             await new Promise(resolve => setTimeout(resolve, 2500)); 
 
@@ -171,8 +187,13 @@
             /*
             const realApiUrl = "https://ipf-preditor-egl11gb9p-aaric-rodrigues-projects.vercel.app/predict";
             const apiResponse = await fetch(realApiUrl, {
+=======
+            // --- REAL FETCH LOGIC ---
+            const response = await fetch(API_URL, {
+>>>>>>> 3b793d84dbb381bc82dfa8026ce34b8d6b5422a3
                 method: 'POST',
                 body: formData // Directly send the FormData object
+                body: formData // Send the FormData object directly for file upload handling
             });
             
             if (!apiResponse.ok) {
@@ -187,19 +208,28 @@
 
             const baselineFVC = parseFloat(formData.get('FVC'));
             const targetWeek = parseInt(formData.get('weeks'));
+            const result = await response.json();
             
             // Simulating FVC decay over weeks (for progression model)
             // Example: FVC decreases by 5mL per week from baseline, plus some random noise
             const predictedValue = (baselineFVC - (targetWeek * 5) + (Math.random() * 100 - 50)).toFixed(2); 
             // Confidence (standard deviation/uncertainty) in mL, as per your format
             const confidenceML = (50 + Math.random() * 50).toFixed(2); 
+            if (!response.ok) {
+                // If Vercel/FastAPI returns a 4xx or 5xx error
+                const detail = result.detail || 'Unknown server error.';
+                throw new Error(`Prediction API failed (${response.status}): ${detail}`);
+            }
 
+            // Expected response keys: {FVC: number, Confidence: number}
             return {
                 status: 'success',
                 FVC: predictedValue, // Key matches the submission format
                 Confidence: confidenceML, // Key matches the submission format (in mL)
+                ...result, 
                 unit: 'mL',
                 model_version: 'v3.0-progression-sim'
+                model_version: 'v3.0-efficientnet-live'
             };
         }
         // -------------------------------------
@@ -208,6 +238,7 @@
             e.preventDefault();
 
             // Disable button and show spinner
+            // Start loading state
             submitButton.disabled = true;
             spinner.classList.remove('hidden');
             buttonText.textContent = 'Processing...';
@@ -232,6 +263,7 @@
                         { label: 'Confidence (mL)', value: `${result.Confidence} ${result.unit}` },
                         { label: 'Target Week', value: formData.get('weeks') }, 
                         { label: 'Model Version', value: result.model_version },
+                        { label: 'Model Source', value: result.model_version },
                     ];
 
                     // Populate the table
@@ -258,6 +290,7 @@
             } catch (error) {
                 console.error('Error during API call:', error);
                 showMessage('error', `❌ Network Error or Model Unreachable: ${error.message}`);
+                showMessage('error', `❌ Connection Error or Model Logic Failure: ${error.message}`);
 
             } finally {
                 // Re-enable button and hide spinner
