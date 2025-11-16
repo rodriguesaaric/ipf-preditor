@@ -1,6 +1,7 @@
 {
-    "private": true,
-    "scripts": {
-        "start": "echo 'Serving static files...'"
-    }
+  "name": "ipf-fvc-predictor",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "vercel dev"
+  }
 }
