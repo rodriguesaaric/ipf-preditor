@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pulmonary Progression Predictor (FVC)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Slate 50 */
+        }
+        .shadow-custom {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 4px rgba(75, 85, 99, 0.05);
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 sm:p-10 rounded-xl shadow-custom">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800 tracking-tight">
+                Pulmonary FVC Progression Prediction
+            </h1>
+            <p class="mt-2 text-lg text-gray-500">
+                Input baseline patient data, target week, and baseline CT scan.
+            </p>
+        </header>
+
+        <form id="fvcForm" class="space-y-6">
+            <!-- Data Input Section - 2 Column Grid for Metadata -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <!-- Age Input -->
+                <div>
+                    <label for="age" class="block text-sm font-medium text-gray-700 mb-1">Age (Years)</label>
+                    <input type="number" id="age" name="age" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                </div>
+                <!-- Sex Selection -->
+                <div>
+                    <label for="sex" class="block text-sm font-medium text-gray-700 mb-1">Sex</label>
+                    <select id="sex" name="sex" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 bg-white">
+                        <option value="">Select Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+                <!-- Smoking Status -->
+                <div>
+                    <label for="smokingStatus" class="block text-sm font-medium text-gray-700 mb-1">Smoking Status</label>
+                    <select id="smokingStatus" name="smokingStatus" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 bg-white">
+                        <option value="">Select Status</option>
+                        <option value="never">Never Smoker</option>
+                        <option value="ex">Ex-Smoker</option>
+                        <option value="current">Current Smoker</option>
+                    </select>
+                </div>
+                <!-- Recorded FVC (Baseline) -->
+                <div>
+                    <label for="FVC" class="block text-sm font-medium text-gray-700 mb-1">Recorded FVC (mL)</label>
+                    <input type="number" id="FVC" name="FVC" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                </div>
+                
+                <!-- Target Weeks Input (Spans full width for emphasis) -->
+                <div class="md:col-span-2"> 
+                    <label for="weeks" class="block text-sm font-medium text-gray-700 mb-1">Target Week for Prediction (Weeks Relative to CT)</label>
+                    <input type="number" id="weeks" name="weeks" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                           placeholder="e.g., 0 for current week, positive for future, negative for past">
+                </div>
+            </div>
+
+            <!-- DICOM Upload Section -->
+            <div class="mt-8">
+                <label for="ctScan" class="block text-lg font-semibold text-gray-800 mb-2">CT Scan Upload (Baseline DICOM File)</label>
+                <div class="flex flex-col items-center justify-center w-full">
+                    <label for="ctScan" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-100 transition duration-300">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <svg class="w-8 h-8 mb-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 013.755 1.482l-.841 1.258A3 3 0 0016 8h-1a3 3 0 00-3-3H9a3 3 0 00-3 3v.5m4 2.5l-4 4m0 0l4 4m-4-4h18"></path></svg>
+                            <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                            <p class="text-xs text-gray-500">DICOM (.dcm) or standard image file</p>
+                        </div>
+                        <input id="ctScan" type="file" name="ctScan" class="hidden" accept=".dcm, .jpg, .jpeg, .png" required onchange="displayFileName(this)">
+                    </label>
+                </div>
+                <p id="fileNameDisplay" class="mt-2 text-sm text-gray-600 italic text-center"></p>
+            </div>
+
+            <!-- Message Box for Alerts (Replaces alert()) -->
+            <div id="messageBox" class="hidden p-4 rounded-lg text-sm transition duration-300 ease-in-out" role="alert"></div>
+
+
+            <!-- Submission Button -->
+            <div class="pt-4">
+                <button type="submit" id="submitButton"
+                        class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300 ease-in-out disabled:opacity-50">
+                    <svg id="spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span id="buttonText">Get FVC Progression Prediction</span>
+                </button>
+            </div>
+        </form>
+
+        <!-- Result Table Section -->
+        <div id="resultContainer" class="mt-12 pt-6 border-t border-gray-200 hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Prediction Result</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 rounded-xl shadow-lg border border-gray-100">
+                    <thead class="bg-blue-600 text-white">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider rounded-tl-lg">Metric</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider rounded-tr-lg">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Results will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const form = document.getElementById('fvcForm');
+        const submitButton = document.getElementById('submitButton');
+        const spinner = document.getElementById('spinner');
+        const buttonText = document.getElementById('buttonText');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultTableBody = document.getElementById('resultTableBody');
+        const messageBox = document.getElementById('messageBox');
+
+        // Utility function to show custom messages instead of alert()
+        function showMessage(type, message) {
+            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+
+            if (type === 'error') {
+                messageBox.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'text-green-700');
+            }
+            messageBox.innerHTML = message;
+            // Auto-hide message after 5 seconds
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        function displayFileName(input) {
+            const display = document.getElementById('fileNameDisplay');
+            if (input.files.length > 0) {
+                display.textContent = `File selected: ${input.files[0].name}`;
+            } else {
+                display.textContent = '';
+            }
+        }
+
+        // --- SIMULATED API CALL FUNCTION ---
+        // *** IMPORTANT: REPLACE THIS FUNCTION WITH A REAL 'fetch' TO YOUR DEPLOYED MODEL API ***
+        // The real API should expect the form data (including the CT file) and return the FVC and Confidence.
+        async function predictFVC(formData) {
+            // Simulate network delay for the API call
+            await new Promise(resolve => setTimeout(resolve, 2500)); 
+
+            // In a real application, you would:
+            /*
+            const realApiUrl = "YOUR_DEPLOYED_MODEL_ENDPOINT_URL";
+            const apiResponse = await fetch(realApiUrl, {
+                method: 'POST',
+                body: formData // Directly send the FormData object
+            });
+            
+            if (!apiResponse.ok) {
+                throw new Error(`Server returned status: ${apiResponse.status}`);
+            }
+            const result = await apiResponse.json();
+            return result;
+            */
+
+            // SIMULATED successful response for demonstration
+            console.log("Simulating API call with data:", Object.fromEntries(formData));
+
+            const baselineFVC = parseFloat(formData.get('FVC'));
+            const targetWeek = parseInt(formData.get('weeks'));
+            
+            // Simulating FVC decay over weeks (for progression model)
+            // Example: FVC decreases by 5mL per week from baseline, plus some random noise
+            const predictedValue = (baselineFVC - (targetWeek * 5) + (Math.random() * 100 - 50)).toFixed(2); 
+            // Confidence (standard deviation/uncertainty) in mL, as per your format
+            const confidenceML = (50 + Math.random() * 50).toFixed(2); 
+
+            return {
+                status: 'success',
+                FVC: predictedValue, // Key matches the submission format
+                Confidence: confidenceML, // Key matches the submission format (in mL)
+                unit: 'mL',
+                model_version: 'v3.0-progression-sim'
+            };
+        }
+        // -------------------------------------
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Disable button and show spinner
+            submitButton.disabled = true;
+            spinner.classList.remove('hidden');
+            buttonText.textContent = 'Processing...';
+            resultContainer.classList.add('hidden');
+            messageBox.classList.add('hidden');
+
+            const formData = new FormData(form);
+
+            try {
+                const result = await predictFVC(formData);
+
+                if (result.status === 'success' && result.FVC !== undefined && result.Confidence !== undefined) {
+                    // Display success message
+                    showMessage('success', '✅ Prediction successful! See the table below for results.');
+
+                    // Clear previous results
+                    resultTableBody.innerHTML = '';
+
+                    // Data structure matches sample_submission.csv requirements (FVC and Confidence)
+                    const displayData = [
+                        { label: 'Predicted FVC', value: `${result.FVC} ${result.unit}` },
+                        { label: 'Confidence (mL)', value: `${result.Confidence} ${result.unit}` },
+                        { label: 'Target Week', value: formData.get('weeks') }, 
+                        { label: 'Model Version', value: result.model_version },
+                    ];
+
+                    // Populate the table
+                    displayData.forEach((item, index) => {
+                        const row = resultTableBody.insertRow();
+                        row.classList.add(index % 2 === 0 ? 'bg-white' : 'bg-gray-50', 'hover:bg-gray-100');
+                        
+                        let cell1 = row.insertCell();
+                        cell1.classList.add('px-6', 'py-4', 'whitespace-nowrap', 'text-sm', 'font-medium', 'text-gray-900');
+                        cell1.textContent = item.label;
+                        
+                        let cell2 = row.insertCell();
+                        cell2.classList.add('px-6', 'py-4', 'whitespace-nowrap', 'text-sm', 'text-gray-600', 'font-semibold');
+                        cell2.textContent = item.value;
+                    });
+
+                    // Show the result container
+                    resultContainer.classList.remove('hidden');
+
+                } else {
+                    showMessage('error', `❌ Prediction failed. Error: ${result.message || 'Model returned incomplete data.'}`);
+                }
+
+            } catch (error) {
+                console.error('Error during API call:', error);
+                showMessage('error', `❌ Network Error or Model Unreachable: ${error.message}`);
+
+            } finally {
+                // Re-enable button and hide spinner
+                submitButton.disabled = false;
+                spinner.classList.add('hidden');
+                buttonText.textContent = 'Get FVC Progression Prediction';
+            }
+        });
+    </script>
+</body>
+</html>
