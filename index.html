@@ -6,7 +6,6 @@
     <title>Pulmonary Progression Predictor (FVC)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
@@ -53,9 +52,6 @@
                     <select id="smokingStatus" name="smokingStatus" required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 bg-white">
                         <option value="">Select Status</option>
-                        <option value="never">Never Smoker</option>
-                        <option value="ex">Ex-Smoker</option>
-                        <option value="current">Current Smoker</option>
                         <option value="Never Smoker">Never Smoker</option>
                         <option value="Ex-smoker">Ex-smoker</option>
                         <option value="Current Smoker">Current Smoker</option>
@@ -63,8 +59,6 @@
                 </div>
                 <!-- Recorded FVC (Baseline) -->
                 <div>
-                    <label for="FVC" class="block text-sm font-medium text-gray-700 mb-1">Recorded FVC (mL)</label>
-                    <input type="number" id="FVC" name="FVC" required
                     <label for="fvc" class="block text-sm font-medium text-gray-700 mb-1">Recorded FVC (Baseline, mL)</label>
                     <!-- NOTE: Changed name from FVC to fvc for consistency with Python backend -->
                     <input type="number" id="fvc" name="fvc" required
@@ -97,7 +91,6 @@
             </div>
 
             <!-- Message Box for Alerts (Replaces alert()) -->
-            <div id="messageBox" class="hidden p-4 rounded-lg text-sm transition duration-300 ease-in-out" role="alert"></div>
             <div id="messageBox" class="p-4 rounded-lg text-sm transition duration-300 ease-in-out hidden" role="alert"></div>
 
 
@@ -142,7 +135,6 @@
         const resultContainer = document.getElementById('resultContainer');
         const resultTableBody = document.getElementById('resultTableBody');
         const messageBox = document.getElementById('messageBox');
-
         
         // ** LIVE API ENDPOINT **
         // This links directly to your deployed FastAPI serverless function on Vercel.
@@ -158,7 +150,6 @@
                 messageBox.classList.add('bg-green-100', 'text-green-700');
             }
             messageBox.innerHTML = message;
-            // Auto-hide message after 5 seconds
             
             setTimeout(() => {
                 messageBox.classList.add('hidden');
@@ -174,9 +165,6 @@
             }
         }
 
-        // --- SIMULATED API CALL FUNCTION ---
-        // *** IMPORTANT: REPLACE THIS FUNCTION WITH A REAL 'fetch' TO YOUR DEPLOYED MODEL API ***
-        // The real API should expect the form data (including the CT file) and return the FVC and Confidence.
         // --- ACTUAL API CALL FUNCTION ---
         async function predictFVC(formData) {
 <<<<<<< HEAD
@@ -192,29 +180,11 @@
             const response = await fetch(API_URL, {
 >>>>>>> 3b793d84dbb381bc82dfa8026ce34b8d6b5422a3
                 method: 'POST',
-                body: formData // Directly send the FormData object
                 body: formData // Send the FormData object directly for file upload handling
             });
             
-            if (!apiResponse.ok) {
-                throw new Error(`Server returned status: ${apiResponse.status}`);
-            }
-            const result = await apiResponse.json();
-            return result;
-            */
-
-            // SIMULATED successful response for demonstration
-            console.log("Simulating API call with data:", Object.fromEntries(formData));
-
-            const baselineFVC = parseFloat(formData.get('FVC'));
-            const targetWeek = parseInt(formData.get('weeks'));
             const result = await response.json();
             
-            // Simulating FVC decay over weeks (for progression model)
-            // Example: FVC decreases by 5mL per week from baseline, plus some random noise
-            const predictedValue = (baselineFVC - (targetWeek * 5) + (Math.random() * 100 - 50)).toFixed(2); 
-            // Confidence (standard deviation/uncertainty) in mL, as per your format
-            const confidenceML = (50 + Math.random() * 50).toFixed(2); 
             if (!response.ok) {
                 // If Vercel/FastAPI returns a 4xx or 5xx error
                 const detail = result.detail || 'Unknown server error.';
@@ -223,12 +193,8 @@
 
             // Expected response keys: {FVC: number, Confidence: number}
             return {
-                status: 'success',
-                FVC: predictedValue, // Key matches the submission format
-                Confidence: confidenceML, // Key matches the submission format (in mL)
                 ...result, 
                 unit: 'mL',
-                model_version: 'v3.0-progression-sim'
                 model_version: 'v3.0-efficientnet-live'
             };
         }
@@ -237,7 +203,6 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Disable button and show spinner
             // Start loading state
             submitButton.disabled = true;
             spinner.classList.remove('hidden');
@@ -251,22 +216,17 @@
                 const result = await predictFVC(formData);
 
                 if (result.status === 'success' && result.FVC !== undefined && result.Confidence !== undefined) {
-                    // Display success message
                     showMessage('success', '✅ Prediction successful! See the table below for results.');
 
-                    // Clear previous results
                     resultTableBody.innerHTML = '';
 
-                    // Data structure matches sample_submission.csv requirements (FVC and Confidence)
                     const displayData = [
                         { label: 'Predicted FVC', value: `${result.FVC} ${result.unit}` },
                         { label: 'Confidence (mL)', value: `${result.Confidence} ${result.unit}` },
                         { label: 'Target Week', value: formData.get('weeks') }, 
-                        { label: 'Model Version', value: result.model_version },
                         { label: 'Model Source', value: result.model_version },
                     ];
 
-                    // Populate the table
                     displayData.forEach((item, index) => {
                         const row = resultTableBody.insertRow();
                         row.classList.add(index % 2 === 0 ? 'bg-white' : 'bg-gray-50', 'hover:bg-gray-100');
@@ -280,7 +240,6 @@
                         cell2.textContent = item.value;
                     });
 
-                    // Show the result container
                     resultContainer.classList.remove('hidden');
 
                 } else {
@@ -289,11 +248,9 @@
 
             } catch (error) {
                 console.error('Error during API call:', error);
-                showMessage('error', `❌ Network Error or Model Unreachable: ${error.message}`);
                 showMessage('error', `❌ Connection Error or Model Logic Failure: ${error.message}`);
 
             } finally {
-                // Re-enable button and hide spinner
                 submitButton.disabled = false;
                 spinner.classList.add('hidden');
                 buttonText.textContent = 'Get FVC Progression Prediction';
